@@ -190,6 +190,7 @@
 
   /* ------------------------------------------------ lighting fx */
   function spotlightOn(chr) {
+    if (!chr || !chr.group) { UI.err('spotlightOn bad arg ' + JSON.stringify(chr && Object.keys(chr))); return; }
     const p = chr.group.position;
     W.keyTarget.position.set(p.x, 1.2, p.z);
     W.key.position.set(p.x, 10.5, p.z + 4.5);
@@ -364,7 +365,7 @@
     pc.group.visible = true;
     pc.anim.mode = 'idle';
     spotlightOn(playerC);
-    Cam.set('dress', playerC);
+    Cam.set('dress', playerC.chr);
     UI.outfitTags([]);
     return new Promise(res => {
       UI.openDresser(cats, (catId, itemOrRandom) => {
@@ -395,13 +396,13 @@
     for (const c of order) {
       RC.resetRatPose(c.chr);
       spotlightOn(c);
-      Cam.set('walk', c);
+      Cam.set('walk', c.chr);
       UI.banner('NOW STALKING THE RUNWAY', c.name, c.isPlayer ? '(THAT IS YOUR PATHETIC SELF)' : RC.pick(['fresh from the bin', 'greased and trembling', 'uncertain of itself', 'here for chaos, stays for the flies', 'professionally filthy']));
       c.chr.anim.mode = 'idle';
       await RC.wait(.85);
       await walkIn(c.chr, { x: 0, y: .12, z: RUNWAY_Z0 }, { z: POSE_Z }, 3.4);
       /* pose + paparazzi */
-      Cam.set('pose', c);
+      Cam.set('pose', c.chr);
       RC.resetRatPose(c.chr);
       c.chr.anim.mode = 'pose';
       c.chr.anim.speed = 0;
@@ -434,7 +435,7 @@
       (marks[0] + marks[1] + marks[2] > 16.5 ? Audio.cheer : Audio.boo)();
       await RC.wait(1.1);
       /* exit stage right */
-      Cam.set('walk', c);
+      Cam.set('walk', c.chr);
       RC.resetRatPose(c.chr);
       c.chr.anim.mode = 'walk';
       await walkOut(c.chr, { x: OFF_X, y: .12, z: OFF_Z }, 1.6);
@@ -518,7 +519,7 @@
       }
       /* finale */
       const winner = sortedStandings()[0];
-      Cam.set('finale', winner);
+      Cam.set('finale', winner.chr);
       winner.chr.group.visible = true;
       RC.resetRatPose(winner.chr);
       winner.chr.group.position.set(0, .12, 6.5);
