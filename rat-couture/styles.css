@@ -1,0 +1,259 @@
+/* ============= RAT COUTURE — dirty underground zine UI ============= */
+:root {
+  --acid: #9dff2a;
+  --blood: #ff2a4a;
+  --rot: #6a8a2a;
+  --bone: #e8dcc0;
+  --shit: #8a6a3a;
+  --neon-c: #2af5ff;
+  --panel: #131211;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body {
+  margin: 0; padding: 0; height: 100%; overflow: hidden;
+  background: #050505; color: var(--bone);
+  font-family: 'Special Elite', 'Courier New', monospace;
+  user-select: none;
+}
+#app { position: fixed; inset: 0; }
+#c { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
+/* grime passes over the whole render */
+#vignette {
+  position: absolute; inset: 0; pointer-events: none; z-index: 3;
+  background:
+    radial-gradient(ellipse at 50% 42%, transparent 38%, rgba(0,0,0,.55) 88%, rgba(0,0,0,.8) 100%),
+    linear-gradient(rgba(20,10,4,.12), rgba(8,12,4,.18));
+  mix-blend-mode: multiply;
+}
+#scratch {
+  position: absolute; inset: 0; pointer-events: none; z-index: 4; opacity: .5;
+  background-image:
+    repeating-linear-gradient(105deg, transparent 0 46px, rgba(255,255,255,.018) 46px 47px, transparent 47px 90px),
+    repeating-linear-gradient(-80deg, transparent 0 120px, rgba(0,0,0,.05) 120px 121px, transparent 121px 220px);
+}
+#flash {
+  position: absolute; inset: 0; background: #fff; opacity: 0;
+  pointer-events: none; z-index: 8; transition: opacity .09s linear;
+}
+#flash.on { opacity: .92; }
+
+.hidden { display: none !important; }
+
+/* cinematic letterbox */
+#letterbox { position: absolute; inset: 0; pointer-events: none; z-index: 6; }
+#letterbox .bar {
+  position: absolute; left: 0; right: 0; height: 7%;
+  background: linear-gradient(#000, #0c0b0a);
+  box-shadow: 0 0 18px rgba(0,0,0,.8);
+  transition: transform .7s cubic-bezier(.7,0,.3,1);
+}
+#letterbox .bar.top { top: 0; transform: translateY(-100%); }
+#letterbox .bar.bottom { bottom: 0; transform: translateY(100%); }
+#letterbox.on .bar.top { transform: translateY(0); }
+#letterbox.on .bar.bottom { transform: translateY(0); }
+
+/* ================= HUD ================= */
+#hud { position: absolute; inset: 0; pointer-events: none; z-index: 10; }
+#roundInfo {
+  position: absolute; top: 9%; left: 3%; min-width: 210px;
+  background: rgba(10,9,8,.82); border: 1px solid #2c2620;
+  border-left: 4px solid var(--blood); padding: 10px 14px;
+  transform: skewX(-4deg);
+}
+#roundInfo h2 { margin: 0; font-family: 'Bebas Neue', Impact, sans-serif; font-size: 30px; letter-spacing: 2px; color: var(--acid); }
+#roundInfo .sub { font-size: 12px; color: #9a8f7a; letter-spacing: 1px; }
+#roundInfo .now { font-size: 13px; color: var(--bone); margin-top: 6px; }
+
+#scoreboard {
+  position: absolute; top: 9%; right: 2.5%; min-width: 190px;
+  background: rgba(10,9,8,.82); border: 1px solid #2c2620;
+  padding: 8px 12px; transform: skewX(3deg);
+}
+#scoreboard h3 { margin: 0 0 6px; font-family: 'Bebas Neue', Impact; font-size: 15px; letter-spacing: 3px; color: #9a8f7a; }
+.sbrow { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; padding: 2px 0; }
+.sbrow .nm { max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sbrow.you .nm { color: var(--acid); }
+.sbrow .pts { font-weight: bold; }
+
+#outfitTags { position: absolute; bottom: 3%; left: 3%; display: flex; gap: 6px; flex-wrap: wrap; max-width: 40%; }
+#outfitTags span {
+  font-size: 11px; letter-spacing: 1px; padding: 2px 7px;
+  background: rgba(20,18,14,.8); border: 1px solid #3a342a; color: var(--acid);
+}
+
+/* ================= banner ================= */
+#banner {
+  position: absolute; top: 16%; left: 0; right: 0; z-index: 12;
+  text-align: center; pointer-events: none;
+}
+#bannerKicker {
+  font-size: 14px; letter-spacing: 8px; color: #9a8f7a; margin-bottom: 6px;
+  text-transform: uppercase;
+}
+#bannerText {
+  font-family: 'Rubik Glitch', 'Bebas Neue', Impact, sans-serif;
+  font-size: clamp(40px, 7vw, 92px); line-height: .95;
+  color: var(--bone);
+  text-shadow: 3px 3px 0 var(--blood), -2px -2px 0 #000, 0 0 40px rgba(255,42,74,.35);
+  transform: rotate(-1.5deg);
+  animation: slam .4s cubic-bezier(.2,2,.4,1);
+}
+@keyframes slam { 0% { transform: scale(2.6) rotate(-1.5deg); opacity: 0; } 100% { transform: scale(1) rotate(-1.5deg); opacity: 1; } }
+#bannerSub { margin-top: 10px; font-size: 15px; color: var(--acid); letter-spacing: 3px; }
+
+/* ================= jury quote card ================= */
+#quoteCard {
+  position: absolute; bottom: 11%; left: 50%; transform: translateX(-50%) rotate(-1deg);
+  z-index: 13; max-width: 620px; text-align: center;
+  background: rgba(8,7,6,.9); border: 1px solid #2c2620;
+  border-top: 3px solid var(--acid);
+  padding: 14px 26px 18px;
+  animation: qin .25s ease-out;
+}
+@keyframes qin { from { transform: translateX(-50%) translateY(24px) rotate(-1deg); opacity: 0; } }
+#quoteJuror { font-family: 'Bebas Neue', Impact; font-size: 20px; letter-spacing: 2px; color: var(--neon-c); }
+#quoteMark { font-family: 'Rubik Glitch', Impact; font-size: 42px; color: var(--bone); text-shadow: 2px 2px 0 var(--blood); }
+#quoteText { font-size: 15px; color: #cfc4ae; font-style: italic; margin-top: 4px; }
+
+/* ================= buttons ================= */
+.rbtn {
+  font-family: 'Bebas Neue', Impact, sans-serif; font-size: 20px; letter-spacing: 2px;
+  color: var(--bone); background: #1a1613; border: 1px solid #3a322a;
+  border-bottom: 4px solid #000; padding: 10px 22px; cursor: pointer;
+  transition: transform .08s, background .12s, color .12s;
+}
+.rbtn:hover { background: #2a2218; color: var(--acid); }
+.rbtn:active { transform: translateY(2px); }
+.rbtn.send { background: var(--blood); border-color: #7a1226; color: #fff; }
+.rbtn.send:hover { background: #ff4a64; color: #fff; }
+.rbtn.send:disabled { background: #3a2c2c; color: #8a7a72; cursor: not-allowed; border-color: #2a2222; }
+
+/* ================= title ================= */
+#titleScreen {
+  position: absolute; inset: 0; z-index: 20; display: flex;
+  flex-direction: column; align-items: center; justify-content: center;
+  background:
+    radial-gradient(ellipse at 50% 30%, rgba(38,10,16,.88), rgba(5,4,3,.96) 70%),
+    repeating-linear-gradient(0deg, #0a0908 0 3px, #0d0c0a 3px 6px);
+}
+.titleGlow {
+  font-family: 'Rubik Glitch', Impact, sans-serif;
+  font-size: clamp(56px, 11vw, 150px); color: var(--bone);
+  text-shadow: 4px 4px 0 var(--blood), -3px -3px 0 #000, 0 0 60px rgba(255,42,74,.5);
+  transform: rotate(-2deg); line-height: .9;
+  animation: neonPulse 2.4s infinite ease-in-out;
+}
+@keyframes neonPulse {
+  0%, 100% { text-shadow: 4px 4px 0 var(--blood), -3px -3px 0 #000, 0 0 60px rgba(255,42,74,.5); }
+  47% { text-shadow: 4px 4px 0 var(--blood), -3px -3px 0 #000, 0 0 20px rgba(255,42,74,.2); }
+  48% { text-shadow: 4px 4px 0 #6a6a6a, -3px -3px 0 #000; opacity: .7; }
+  50% { text-shadow: 4px 4px 0 var(--blood), -3px -3px 0 #000, 0 0 60px rgba(255,42,74,.5); }
+  51% { opacity: .85; }
+  52% { opacity: 1; }
+}
+.titleGlow2 {
+  font-family: 'Bebas Neue', Impact; font-size: clamp(18px, 3vw, 34px);
+  letter-spacing: clamp(4px, 1vw, 14px); color: var(--neon-c);
+  text-shadow: 0 0 18px rgba(42,245,255,.6); margin-top: 8px;
+}
+.titleTag { margin-top: 14px; font-size: 12px; letter-spacing: 3px; color: #9a8f7a; }
+#playerNameCard {
+  margin: 26px 0 6px; text-align: center;
+  background: rgba(20,16,12,.7); border: 1px solid #3a322a; padding: 12px 26px;
+}
+#playerName {
+  font-family: 'Bebas Neue', Impact; font-size: 26px; letter-spacing: 3px; color: var(--acid);
+}
+#btnRestyle { font-size: 15px; margin-top: 8px; padding: 6px 14px; }
+#btnStart { margin-top: 22px; font-size: 26px; padding: 14px 40px; }
+.credit { position: absolute; bottom: 4%; font-size: 12px; color: #6a6056; letter-spacing: 1px; text-align: center; padding: 0 20px; }
+#errlog { position: absolute; bottom: 10%; left: 0; right: 0; text-align: center; font-size: 11px; color: #ff5a5a; max-height: 60px; overflow: hidden; }
+
+/* ================= dresser ================= */
+#dresser {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 15;
+  background: linear-gradient(rgba(12,10,8,.96), rgba(8,6,5,.98));
+  border-top: 2px solid var(--blood);
+  padding: 10px 14px 12px; max-height: 62%;
+  display: flex; flex-direction: column; gap: 8px;
+}
+#dresserHead { display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; }
+#dresserTitle { font-family: 'Bebas Neue', Impact; font-size: 24px; letter-spacing: 2px; color: var(--bone); }
+#dresserTheme { font-size: 13px; color: var(--acid); }
+#dresserCats { display: flex; gap: 6px; flex-wrap: wrap; }
+.catTab {
+  font-family: 'Bebas Neue', Impact; font-size: 15px; letter-spacing: 2px;
+  padding: 7px 14px; cursor: pointer; color: #9a8f7a;
+  background: #16130f; border: 1px solid #2a241e;
+}
+.catTab.active { color: var(--blood); border-color: var(--blood); background: #1d130f; }
+.catTab .st { color: var(--acid); margin-left: 6px; font-size: 12px; }
+#dresserGrid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(215px, 1fr));
+  gap: 6px; overflow-y: auto; padding-right: 4px; flex: 1;
+  scrollbar-width: thin; scrollbar-color: var(--blood) #111;
+}
+.itemCard {
+  background: #14110e; border: 1px solid #2a241e; padding: 8px 10px; cursor: pointer;
+  transition: border-color .1s, background .1s, transform .06s;
+}
+.itemCard:hover { border-color: #6a5a44; transform: translateX(2px); }
+.itemCard.sel {
+  border-color: var(--acid); background: #1a1e10;
+  box-shadow: 0 0 12px rgba(157,255,42,.15);
+}
+.itemCard h4 { margin: 0 0 2px; font-family: 'Bebas Neue', Impact; font-size: 16px; letter-spacing: 1px; color: var(--bone); }
+.itemCard .fl { font-size: 11px; color: #9a8f7a; font-style: italic; line-height: 1.35; }
+.itemCard .tg { margin-top: 5px; display: flex; gap: 4px; flex-wrap: wrap; }
+.itemCard .tg b {
+  font-size: 9px; letter-spacing: 1px; color: #0c0c0c; background: #6a6056; padding: 1px 5px;
+}
+.itemCard.sel .tg b { background: var(--acid); }
+#dresserFoot { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+#pickedList { flex: 1; font-size: 12px; color: #9a8f7a; min-width: 160px; }
+#pickedList b { color: var(--acid); font-weight: normal; }
+
+/* ================= round board / finale ================= */
+#roundBoard, #finale {
+  position: absolute; inset: 0; z-index: 16; display: flex;
+  flex-direction: column; align-items: center; justify-content: center;
+  background: rgba(5,4,4,.85); backdrop-filter: blur(2px);
+}
+#roundBoardTitle, #finaleKicker {
+  font-family: 'Bebas Neue', Impact; font-size: clamp(28px, 5vw, 54px); letter-spacing: 4px;
+  color: var(--bone); text-shadow: 3px 3px 0 var(--blood);
+}
+#roundBoardRows, #finaleRows {
+  margin: 26px 0; display: flex; flex-direction: column; gap: 8px; min-width: 340px;
+}
+.fbRow { display: flex; gap: 16px; align-items: baseline; font-size: 18px; padding: 8px 18px; background: rgba(16,13,10,.9); border: 1px solid #2a241e; }
+.fbRow .rank { font-family: 'Bebas Neue', Impact; font-size: 24px; color: #6a6056; width: 34px; }
+.fbRow .nm { flex: 1; }
+.fbRow .pts { font-size: 24px; color: var(--bone); }
+.fbRow.winner { border-color: var(--acid); }
+.fbRow.winner .rank, .fbRow.winner .nm { color: var(--acid); }
+.fbRow.you .nm::after { content: ' (YOU)'; font-size: 12px; color: var(--acid); }
+#finaleName {
+  font-family: 'Rubik Glitch', Impact, sans-serif;
+  font-size: clamp(34px, 6.5vw, 74px); color: var(--acid);
+  text-shadow: 3px 3px 0 var(--blood), 0 0 44px rgba(157,255,42,.4);
+  transform: rotate(-1deg); text-align: center;
+}
+#finaleSub { margin-top: 10px; font-size: 15px; color: #9a8f7a; letter-spacing: 2px; text-align: center; padding: 0 16px; }
+#btnAgain, #btnNext { margin-top: 6px; }
+
+/* misc */
+#skipTip {
+  position: absolute; bottom: 3%; right: 3%; z-index: 14; font-size: 11px;
+  letter-spacing: 2px; color: #6a6056;
+}
+
+/* mobile */
+@media (max-width: 700px) {
+  #scoreboard { transform: none; top: auto; bottom: 63vh; max-height: 30vh; overflow: auto; }
+  #roundInfo { max-width: 46vw; }
+  #dresser { max-height: 66%; }
+  #quoteCard { bottom: 26%; max-width: 92vw; }
+  .titleGlow { font-size: 15vw; }
+}

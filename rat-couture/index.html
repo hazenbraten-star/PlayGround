@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>RAT COUTURE — THE FILTHY RUNWAY</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rubik+Glitch&family=Special+Elite&family=Bebas+Neue&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="app">
+  <canvas id="c"></canvas>
+
+  <!-- grime overlays -->
+  <div id="vignette"></div>
+  <div id="scratch"></div>
+  <div id="flash"></div>
+
+  <!-- cinematic bars -->
+  <div id="letterbox"><div class="bar top"></div><div class="bar bottom"></div></div>
+
+  <!-- HUD -->
+  <div id="hud">
+    <div id="roundInfo" class="hidden"></div>
+    <div id="scoreboard" class="hidden"></div>
+    <div id="outfitTags" class="hidden"></div>
+  </div>
+
+  <!-- announcements -->
+  <div id="banner" class="hidden">
+    <div id="bannerKicker"></div>
+    <div id="bannerText"></div>
+    <div id="bannerSub"></div>
+  </div>
+
+  <!-- jury quote card -->
+  <div id="quoteCard" class="hidden">
+    <div id="quoteJuror"></div>
+    <div id="quoteMark"></div>
+    <div id="quoteText"></div>
+  </div>
+
+  <!-- outfit builder -->
+  <div id="dresser" class="hidden">
+    <div id="dresserHead">
+      <div id="dresserTitle">DRESS YOUR VERMIN</div>
+      <div id="dresserTheme"></div>
+    </div>
+    <div id="dresserCats"></div>
+    <div id="dresserGrid"></div>
+    <div id="dresserFoot">
+      <button id="btnRandom" class="rbtn">?? RANDOMIZE THE FILTH ??</button>
+      <div id="pickedList"></div>
+      <button id="btnSend" class="rbtn send" disabled>SEND IT DOWN THE RUNWAY →</button>
+    </div>
+  </div>
+
+  <!-- title screen -->
+  <div id="titleScreen">
+    <div class="titleGlow">RAT COUTURE</div>
+    <div class="titleGlow2">— THE FILTHY RUNWAY —</div>
+    <div class="titleTag">UNDERGROUND FASHION COMPETITION · SEWER LEVEL 4 · BY INVITATION ONLY (HA)</div>
+    <div id="playerNameCard">
+      <div id="playerName">…</div>
+      <button id="btnRestyle" class="rbtn">NEW HIDEOUS BODY</button>
+    </div>
+    <button id="btnStart" class="rbtn start">ENTER THE FILTHY RUNWAY</button>
+    <div class="titleFoot" id="errlog"></div>
+    <div class="credit">FOUR AI VERMIN ARE ALREADY PICKING THEIR OUTFITS. THEY ARE UGLIER THAN YOU.</div>
+  </div>
+
+  <!-- scoreboard interstitial -->
+  <div id="roundBoard" class="hidden">
+    <div id="roundBoardTitle"></div>
+    <div id="roundBoardRows"></div>
+    <button id="btnNext" class="rbtn send">NEXT ROUND →</button>
+  </div>
+
+  <!-- finale -->
+  <div id="finale" class="hidden">
+    <div id="finaleKicker"></div>
+    <div id="finaleName"></div>
+    <div id="finaleSub"></div>
+    <div id="finaleRows"></div>
+    <button id="btnAgain" class="rbtn send">RUNWAY, AGAIN. WE NEVER LEARN.</button>
+  </div>
+
+  <div id="skipTip" class="hidden">TAP / SPACE TO SKIP</div>
+</div>
+
+<script src="js/vendor/three.min.js"></script>
+<script src="js/util.js"></script>
+<script src="js/textures.js"></script>
+<script src="js/data.js"></script>
+<script src="js/rat.js"></script>
+<script src="js/fashion.js"></script>
+<script src="js/world.js"></script>
+<script src="js/jury.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/errtrace.js"></script>
+<script>window.__trace=[];window.addEventListener('error',e=>{document.title+='|ERR '+e.message;
+RC.ui&&RC.ui.err&&RC.ui.err(e.message);});</script>
+<script src="js/main.js"></script>
+</body>
+</html>
