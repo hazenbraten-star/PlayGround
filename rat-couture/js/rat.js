@@ -53,6 +53,7 @@
     const belly = blob(.20 * W, .23, .19 * W, furMat);
     belly.position.set(0, .16, .03);
     belly.scale.multiplyScalar(S.belly);
+    belly.userData.bs = [belly.scale.x, belly.scale.y, belly.scale.z];
     torso.add(belly); refs.belly = belly; bones.belly = belly;
 
     const chest = blob(.235 * W, .21, .17 * W, furMat);
@@ -111,6 +112,7 @@
 
     /*! nostril blob */
     const noseTip = blob(.033, .028, .03, M.nose());
+    noseTip.name = 'noseTip';
     noseTip.position.set(0, .125, .075 + .52 * S.snoutLen);
     headG.add(noseTip);
 
@@ -120,14 +122,17 @@
     headG.add(teethGroup); bones.teeth = teethGroup;
     const tm = M.teeth();
     const t1 = box(.022, .05 * S.teethSize, .02, tm);
+    t1.name = 't1';
     t1.rotation.z = RC.rand(-.25, .25); t1.rotation.x = RC.rand(-.2, .1);
     t1.position.x = -.014;
     const t2 = box(.022, .045 * S.teethSize, .02, tm);
+    t2.name = 't2';
     t2.rotation.z = RC.rand(-.25, .25); t2.rotation.x = RC.rand(-.2, .1);
     t2.position.x = .014;
     teethGroup.add(t1, t2);
     /* lower teeth peeking */
     const t3 = box(.05, .018, .018, tm);
+    t3.name = 'lower';
     t3.position.y = -.028; teethGroup.add(t3);
 
     /* whiskers */
@@ -150,14 +155,18 @@
       e.position.set(.055 * side, .19, .085);
       headG.add(e); bones['eye' + (side < 0 ? 'L' : 'R')] = e;
       const white = blob(.026, .026, .026, eyeMat);
+      white.name = 'eyeball';
       white.rotation.x = .35;
       e.add(white);
       const iris = blob(.011, .011, .006, irisMat);
+      iris.name = 'iris';
       iris.position.z = .023; iris.rotation.x = .35;
       e.add(iris);
       const pupil = blob(.0052, .0052, .004, M.black(.2, .8));
+      pupil.name = 'pupil';
       pupil.position.z = .027; e.add(pupil);
       const lid = blob(.03, .014 + .01 * S.droop, .026, lidMat);
+      lid.name = 'lid';
       lid.position.set(0, .02 + .012 * S.droop, .004);
       e.add(lid);
       /* squint bags */
@@ -273,6 +282,7 @@
         neck: headG, handR: refs.handR, handL: refs.handL,
         shoulderR: refs.shR, shoulderL: refs.shL,
         ftR: refs.ftR, ftL: refs.ftL,
+        shinR: refs.shinR, shinL: refs.shinL,
         thighR: refs.thR, thighL: refs.thL,
         upL: refs.upL, upR: refs.upR, elL: refs.elL, elR: refs.elR,
       },
@@ -429,7 +439,8 @@
       });
     } else {
       /* idle: greasy sway + breathing + ear flick */
-      B.belly.scale.x = 1.0 + Math.sin(A.breathe) * .02;
+      const bs = B.belly.userData.bs || [1, 1, 1];
+      B.belly.scale.x = bs[0] * (1 + Math.sin(A.breathe) * .02);
       chr.bones.hips.position.y = .92 * chr.scaleAll + Math.sin(A.breathe) * .006;
       chr.bones.torso.rotation.z = Math.sin(A.breathe * .4) * .03;
       chr.bones.skull.rotation.y = Math.sin(A.breathe * .31) * .2;

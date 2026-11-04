@@ -1,6 +1,7 @@
 /* ================= main.js — boot, cameras, audio, game loop ========== */
 (function () {
   const RC = window.RC, THREE = window.THREE, UI = RC.ui;
+  const M = RC.materials;
   if (!window.THREE) { UI.err('three.js failed to load'); return; }
 
   /* ------------------------------------------------ renderer & scene */
@@ -16,6 +17,7 @@
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x050507);
   const camera = new THREE.PerspectiveCamera(52, 1, .1, 120);
+  window.__cam = camera; window.__scene = scene;   // debug access
   camera.position.set(0, 2.4, 6);
   function resize() {
     const w = innerWidth, h = innerHeight;
@@ -29,13 +31,17 @@
   const W = RC.buildWorld(scene);
   window.__worldRef = W;
 
+  /* STEP 2: character creation lab — studio set, orbit camera, morphs */
+  RC.Creator.init(scene, () => startFromCreator(), mode => Cam.set(mode));
+
   /* jury rats: built & seated behind desk */
   const juryRats = RC.JURY.map((juror, i) => {
-    const spec = RC.randomRatSpec();
-    spec.hairStyle = i === 0 ? 'mohawk' : i === 1 ? 'pigtails' : 'bald';
-    spec.scale = .92;
-    const chr = RC.buildRat(spec);
+    const cfg = RC.randomCreatorConfig();
+    cfg.hairStyle = i === 0 ? 'mohawk' : i === 1 ? 'pigtails' : 'bald';
+    cfg.gender = ['male', 'female', 'male'][i];
+    const chr = RC.buildCharacter(cfg);
     RC.buildRat.seated(chr);
+    chr.group.scale.setScalar(.92);
     const seat = W.jurySeats[i];
     chr.group.position.set(seat.x, seat.y, seat.z);
     chr.group.rotation.y = Math.PI; // face the runway (-z)
@@ -138,6 +144,18 @@
           this.look.set(p.x, 1.5, p.z);
           break;
         }
+        case 'creator': {
+          /* casting-lab orbit: full control by RC.Creator, smooth-lerped */
+          const o = RC.Creator.orbit, tp = o.target;
+          const cp = Math.cos(o.phi), sp = Math.sin(o.phi);
+          this.desired.set(
+            tp.x + o.dist * cp * Math.sin(o.theta),
+            tp.y + Math.max(.2, o.dist * sp + .3),
+            tp.z + o.dist * cp * Math.cos(o.theta)
+          );
+          this.look.copy(tp);
+          break;
+        }
       }
       const k = 1 - Math.exp(-dt * 3.2);
       camera.position.lerp(this.desired, k);
@@ -151,6 +169,7 @@
     set(mode, subject) {
       if (this.mode === 'pose' && mode !== 'pose') this.poseT = 0;
       this.mode = mode; this.subject = subject || null;
+      window.__camMode = mode;
       if (mode === 'pose') this.poseT = 0;
       if (mode === 'finale') this.finaleA = 0;
     },
@@ -159,9 +178,9 @@
 
   /* ------------------------------------------------ contestants */
   function makeContestant(isPlayer, name) {
-    const spec = RC.randomRatSpec();
-    spec.hairStyle = RC.pick(['messy', 'mohawk', 'scrags', 'pigtails', 'bald']);
-    const chr = RC.buildRat(spec);
+    /* player: exact creation-lab character; AI: own random freak */
+    const cfg = isPlayer && RC.PLAYER_CONFIG ? RC.PLAYER_CONFIG : RC.randomCreatorConfig();
+    const chr = RC.buildCharacter(cfg);
     scene.add(chr.group);
     return {
       isPlayer, name, chr, score: 0, roundScore: 0, outfitItems: [],
@@ -176,7 +195,8 @@
     contestants.forEach(c => { scene.remove(c.chr.group); RC.clearOutfit(c.chr); });
     contestants = [];
     const aiNames = RC.shuffled(RC.RAT_NAMES).slice(0, 4);
-    const player = makeContestant(true, RC.PLAYER_NAMES[RC.ri(0, RC.PLAYER_NAMES.length - 1)]);
+    const pName = (RC.PLAYER_CONFIG && RC.PLAYER_CONFIG.name) || RC.PLAYER_NAMES[RC.ri(0, RC.PLAYER_NAMES.length - 1)];
+    const player = makeContestant(true, pName);
     contestants.push(player);
     aiNames.forEach(n => contestants.push(makeContestant(false, n)));
     contestants.forEach((c, i) => {
@@ -275,28 +295,34 @@
   const ROUNDS = 5;
 
   const btnSendDummy = document.getElementById('btnSend');
+  /* STEP 2: title buttons route to the character creation lab */
   document.getElementById('btnRestyle').onclick = () => {
     Audio.boot(); Audio.click();
-    player = player || makeContestant(true, RC.PLAYER_NAMES[RC.ri(0, RC.PLAYER_NAMES.length - 1)]);
-    scene.remove(player.chr.group);
-    player.chr = RC.buildRat(RC.randomRatSpec());
-    const s = lineupSpot(0);
-    player.chr.group.position.set(Cam.mode === 'title' ? 0 : s.x, Cam.mode === 'title' ? .12 : s.y, Cam.mode === 'title' ? -2 : s.z);
-    scene.add(player.chr.group);
-    player.isPlayer = true;
-    updatePlayerName();
-    Audio.thud();
+    RC.Creator.open({ freak: true });
   };
   function updatePlayerName() {
     const nm = contestants.find(c => c.isPlayer);
     UI.setName(nm ? nm.name : '…');
   }
+  /* creator confirm: the freshly built freak walks the runway */
+  function startFromCreator() {
+    Audio.stinger();
+    if (player) {
+      scene.remove(player.chr.group);
+      player.chr = RC.buildCharacter(RC.PLAYER_CONFIG);
+      player.chr.group.position.set(0, .12, -2);
+      player.chr.anim.mode = 'idle';
+      scene.add(player.chr.group);
+      player.name = RC.PLAYER_CONFIG.name;
+    }
+    UI.setName(RC.PLAYER_CONFIG.name);
+    runMatch();
+  }
 
   document.getElementById('btnStart').onclick = () => {
     Audio.boot();
-    Audio.stinger();
-    UI.hideTitle();
-    runMatch();
+    Audio.click();
+    RC.Creator.open();
   };
   document.getElementById('btnNext').onclick = () => {
     Audio.click();
@@ -307,7 +333,7 @@
     Audio.stinger();
     UI.finaleHide();
     UI.scoreboard([]);
-    startMatch !== undefined && startMatch();
+    RC.Creator.open();   // back to the casting lab for a new freak
   };
   let _resolveRoundBoard = null;
   function awaitRoundBoard() {
@@ -583,8 +609,10 @@
     RC.Tweens.update(dt);
     W.tick(dt, t);
     RC.tickDetails(dt, t);
+    RC.Creator && RC.Creator.tick && RC.Creator.tick(dt, t);
     contestants.forEach(c => RC.animateRat(c.chr, dt));
     juryRats.forEach(j => RC.animateRat(j.chr, dt));
+    RC.Creator && RC.Creator.char && RC.animateRat(RC.Creator.char, dt);
     Cam.update(dt, t);
     renderer.render(scene, camera);
   }
@@ -592,12 +620,15 @@
 
   /* player character visible on title screen: give them a came appearance */
   (function preTitleRat() {
-    player = makeContestant(true, RC.PLAYER_NAMES[RC.ri(0, RC.PLAYER_NAMES.length - 1)]);
+    player = makeContestant(true, RC.PLAYER_CONFIG ? RC.PLAYER_CONFIG.name : RC.PLAYER_NAMES[RC.ri(0, RC.PLAYER_NAMES.length - 1)]);
     player.chr.group.position.set(0, .12, -2);
     player.chr.anim.mode = 'idle';
     Cam.set('title', player);
     UI.setName(player.name);
     contestants.push(player);
   })();
+
+  /* deep link (screenshot/debug): #creator jumps straight to the lab */
+  if (/creator/.test(location.hash)) { UI.hideTitle(); RC.Creator.open(); }
 
 })();

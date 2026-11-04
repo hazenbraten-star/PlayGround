@@ -77,6 +77,7 @@
 
   /* dispose geometries under a node (materials are cached globally) */
   RC.disposeTree = function (root) {
+    if (!root || !root.traverse) { console.warn('[RC] disposeTree skipped non-object'); return; }
     root.traverse(o => {
       if (o.geometry) o.geometry.dispose();
       if (o.isPoints) o.material.dispose();
