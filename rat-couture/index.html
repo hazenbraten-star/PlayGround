@@ -56,6 +56,41 @@
     </div>
   </div>
 
+  <!-- character creation lab (STEP 2) -->
+  <div id="creator" class="hidden">
+    <div id="creatorHead">
+      <div class="ckicker">SEWER LEVEL 4 · BACKSTAGE LABORATORY</div>
+      <h1 class="ctitle">BIO-ASSEMBLY WING</h1>
+      <div class="csub">choose the meat. choose the fur. make everybody uncomfortable.</div>
+    </div>
+
+    <div id="creatorPanel">
+      <div id="creatorTabs"></div>
+      <div id="creatorOpts"></div>
+    </div>
+
+    <div id="viewerBar">
+      <div id="viewerLbl"></div>
+      <div id="viewBtns">
+        <button class="rbtn mini" data-view="0">FRONT</button>
+        <button class="rbtn mini" data-view="1.5708">SIDE</button>
+        <button class="rbtn mini" data-view="3.1416">BACK</button>
+        <button id="btnSpin" class="rbtn mini">AUTO-SPIN</button>
+        <button id="btnLens" class="rbtn mini">RESET LENS</button>
+      </div>
+      <div class="dragTip">DRAG TO ROTATE · SCROLL TO ZOOM</div>
+    </div>
+
+    <div id="creatorFoot">
+      <div id="nameWrap">
+        <label for="ratName">RAT NAME</label>
+        <input id="ratName" maxlength="26" placeholder="e.g. MOULDY MAGDA" autocomplete="off" />
+      </div>
+      <button id="btnFreak" class="rbtn">?? CREATE RANDOM FREAK ??</button>
+      <button id="btnConfirm" class="rbtn send big">ENTER THE FILTHY RUNWAY</button>
+    </div>
+  </div>
+
   <!-- title screen -->
   <div id="titleScreen">
     <div class="titleGlow">RAT COUTURE</div>
@@ -65,7 +100,7 @@
       <div id="playerName">…</div>
       <button id="btnRestyle" class="rbtn">NEW HIDEOUS BODY</button>
     </div>
-    <button id="btnStart" class="rbtn start">ENTER THE FILTHY RUNWAY</button>
+    <button id="btnStart" class="rbtn start">THE VETTING LAB →</button>
     <div class="titleFoot" id="errlog"></div>
     <div class="credit">FOUR AI VERMIN ARE ALREADY PICKING THEIR OUTFITS. THEY ARE UGLIER THAN YOU.</div>
   </div>
@@ -94,6 +129,7 @@
 <script src="js/textures.js"></script>
 <script src="js/data.js"></script>
 <script src="js/rat.js"></script>
+<script src="js/creator.js"></script>
 <script src="js/fashion.js"></script>
 <script src="js/world.js"></script>
 <script src="js/jury.js"></script>

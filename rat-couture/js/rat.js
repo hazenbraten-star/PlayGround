@@ -30,24 +30,41 @@
   RC.buildRat = function (spec, opts = {}) {
     spec = Object.assign({}, spec);
     const S = spec;
+    /* defaults so every field is safe when absent */
+    if (S.eyeScale == null) S.eyeScale = 1;
+    if (S.legScale == null) S.legScale = 1;
+    if (S.torsoY == null) S.torsoY = 1;
+    if (S.limbRA == null) S.limbRA = 1;
+    if (S.limbRL == null) S.limbRL = 1;
+    if (S.shoulderW == null) S.shoulderW = .25;
+    if (S.hipsW == null) S.hipsW = 1;
+    if (S.chestB == null) S.chestB = 1;
     const g = new THREE.Group();
-    const furMat = M.fur('#' + S.fur.toString(16).padStart(6, '0'));
-    const skinMat = M.skin('#' + S.skin.toString(16).padStart(6, '0'));
+    const furHex = '#' + S.fur.toString(16).padStart(6, '0');
+    const skinHex = '#' + S.skin.toString(16).padStart(6, '0');
+    const furMat = S.furSpecial === 'patchy' ? M.furPatchy(furHex, skinHex)
+      : S.furSpecial === 'hairless' ? M.furHairless()
+      : M.fur(furHex);
+    const skinMat = M.skin(skinHex);
     const bones = {}, refs = {};
 
     const s = S.scale * (opts.scale || 1);
     const W = S.width;
+    const legS = S.legScale, torY = S.torsoY;
 
     /* ---------- hips & torso ---------- */
     const hips = new THREE.Group();
-    hips.position.y = .92 * s;
+    hips.position.y = .82 * legS + .1 * s;   /* leg length + body lift */
     g.add(hips); bones.hips = hips;
+    if (S.hipsTilt) hips.rotation.z = S.hipsTilt;
 
     const torso = new THREE.Group();
     hips.add(torso); bones.torso = torso;
     torso.rotation.x = S.hunch;
+    if (S.torsoTwist) { torso.rotation.z = S.torsoTwist; torso.rotation.y = S.torsoYaw || 0; }
+    torso.scale.y = torY;   /* long / squat trunk stretch */
 
-    const pelvis = blob(.19 * W, .15, .16 * W, furMat);
+    const pelvis = blob(.19 * W * S.hipsW, .15, .16 * W * S.hipsW, furMat);
     pelvis.position.y = .02; torso.add(pelvis);
 
     const belly = blob(.20 * W, .23, .19 * W, furMat);
@@ -58,7 +75,18 @@
     const chest = blob(.235 * W, .21, .17 * W, furMat);
     chest.position.set(0, .36, 0);
     chest.scale.multiplyScalar(1 + S.hunch * -.15);
+    chest.scale.multiplyScalar(S.chestB);
     torso.add(chest); bones.chest = chest;
+
+    /* bosom (female frame) */
+    if (S.gender === 'female') {
+      [-1, 1].forEach(sd => {
+        const boob = blob(.085, .075, .09, furMat);
+        boob.position.set(.085 * sd, .36, .14);
+        boob.scale.multiplyScalar(S.chestB);
+        torso.add(boob);
+      });
+    }
 
     /* hunchback bump */
     if (S.hunch > .22) {
@@ -91,81 +119,174 @@
     [-1, 1].forEach(side => {
       const e = new THREE.Group();
       e.position.set(.105 * side, .23, -.015);
-      e.rotation.z = side * -.35; e.rotation.y = side * .12;
+      const unevenK = S.unevenEars ? (side < 0 ? .68 : 1.25) : 1;
+      e.rotation.z = side * -.35 * (S.unevenEars ? (side < 0 ? 1.9 : .5) : 1);
+      e.rotation.y = side * .12;
+      if (S.earBent && side !== (S.unevenEars ? 0 : 1)) { e.rotation.z += side * .5; e.rotation.x = .35; } /* flopped over */
+      e.position.y = .23 + (S.unevenEars && side < 0 ? -.05 : 0);
       headG.add(e);
-      const outer = blob(.075 * S.earSize, .095 * S.earSize, .022, earMat);
+      const os = S.earSize * unevenK;
+      const outer = blob(.075 * os, .095 * os, .022, earMat);
       e.add(outer);
-      const inner = blob(.05 * S.earSize, .07 * S.earSize, .012, inMat);
+      const inner = blob(.05 * os, .07 * os, .012, inMat);
       inner.position.z = .016; e.add(inner);
+      /* torn bites eaten out of the rim */
+      if (S.earTorn && (S.unevenEars ? side < 0 : true)) {
+        [-1, 1].forEach(b => {
+          const bite = blob(.022 * os, .028 * os, .05, M.black(.7, .2));
+          bite.position.set(b * .05 * os, .06 * os, .004);
+          e.add(bite);
+        });
+        const nick = blob(.03 * os, .018 * os, .026, M.chip(0x7a4438));
+        nick.position.set(.045 * os, .085 * os, .006);
+        e.add(nick);
+      }
       bones['ear' + (side < 0 ? 'L' : 'R')] = e;
     });
 
-    /* snout */
-    const snout = blob(.075, .068, .55 * S.snoutLen * 5, skinMat); // long scaled cap
-    snout.position.set(0, .11, .075 + .28 * S.snoutLen);
+    /* snout: tapered cone whose far tip carries the nostril blob.
+       Extent stays proportional to snoutLen (0.05–0.5) so heads keep
+       their rat silhouette instead of growing a ski jump. */
+    const snFL = .13 + .30 * S.snoutLen;              /* half-length */
+    const snBase = .06;
+    const snC = snBase + snFL * 1.55;                 /* centre z */
+    const snEnd = snBase + snFL * 2.1;                /* tip z */
+    const snout = blob(.075, .068, snFL, skinMat);
+    snout.position.set(0, .11, snC);
     headG.add(snout); bones.snout = snout;
 
-    const bridge = blob(.085, .09, .5 * S.snoutLen * 5, furMat);
-    bridge.position.set(0, .145, .05 + .22 * S.snoutLen);
+    const bridge = blob(.085, .09, snFL * .92, furMat);
+    bridge.position.set(0, .15, snBase + snFL * .9);
     headG.add(bridge);
+
+    if (S.snoutShort) {           /* crushed short snout: wider, tilted */
+      snout.scale.multiplyScalar(1.35); snout.rotation.z = .22;
+      bridge.scale.multiplyScalar(1.3); bridge.rotation.z = -.18;
+    }
+    /* bent nose: whole muzzle veers sideways */
+    const snBend = S.snoutBent || 0;
+    if (snBend) {
+      snout.rotation.y = snBend; bridge.rotation.y = snBend * .7;
+    }
 
     /*! nostril blob */
     const noseTip = blob(.033, .028, .03, M.nose());
-    noseTip.position.set(0, .125, .075 + .52 * S.snoutLen);
+    noseTip.position.set(S.bulb ? 0 : snBend * .16, .125, snEnd);
     headG.add(noseTip);
+    if (S.bulb) {                 /* huge bulbous nose */
+      noseTip.scale.set(1.75, 1.9, 1.7);
+      noseTip.position.z += .02;
+      const bulb2 = blob(.05, .042, .045, M.nose());
+      bulb2.position.set(0, .10, snEnd - .075);
+      bulb2.rotation.y = snBend * .8;
+      headG.add(bulb2);
+      /* chronic redness around the nose */
+      const red = blob(.062, .05, .052, M.chip(0x9a4a44));
+      red.position.set(0, .105, snEnd - .11);
+      headG.add(red);
+    } else if (snBend) {
+      noseTip.position.x += snBend * .12;   /* tip bends with the bridge */
+    }
 
     /* crooked yellow teeth */
     const teethGroup = new THREE.Group();
-    teethGroup.position.set(0, .072, .075 + .42 * S.snoutLen);
+    teethGroup.position.set(0, .072, snBase + snFL * 1.15);
     headG.add(teethGroup); bones.teeth = teethGroup;
-    const tm = M.teeth();
-    const t1 = box(.022, .05 * S.teethSize, .02, tm);
-    t1.rotation.z = RC.rand(-.25, .25); t1.rotation.x = RC.rand(-.2, .1);
-    t1.position.x = -.014;
-    const t2 = box(.022, .045 * S.teethSize, .02, tm);
-    t2.rotation.z = RC.rand(-.25, .25); t2.rotation.x = RC.rand(-.2, .1);
-    t2.position.x = .014;
-    teethGroup.add(t1, t2);
-    /* lower teeth peeking */
-    const t3 = box(.05, .018, .018, tm);
-    t3.position.y = -.028; teethGroup.add(t3);
+    const tm = S.teethRotten ? M.teethRot() : M.teeth();
+    if (S.teethMissing) {
+      /* just one lonely incisor left, the rest rotted out */
+      const tm2 = box(.022, .05 * S.teethSize, .02, tm);
+      tm2.rotation.z = RC.rand(-.25, .25); tm2.position.x = -.014;
+      teethGroup.add(tm2);
+      const gap = blob(.05, .02, .026, M.gum());
+      gap.position.set(.012, .01, -.002);
+      teethGroup.add(gap);
+      const t3 = box(.028, .014, .018, tm);
+      t3.position.set(.012, -.028, 0); teethGroup.add(t3);
+    } else {
+      const crookK = S.teethBigCrook ? 2.2 : 1;
+      const t1 = box(.022, .05 * S.teethSize * crookK, .02, tm);
+      t1.rotation.z = RC.rand(-.25, .25) + (S.teethBigCrook ? .38 * (RC.rand(0, 1) < .5 ? 1 : -1) : 0);
+      t1.rotation.x = RC.rand(-.2, .1);
+      t1.position.x = -.014 - (S.teethBigCrook ? .004 : 0);
+      const t2 = box(.022, .045 * S.teethSize, .02, tm);
+      t2.rotation.z = RC.rand(-.25, .25) - (S.teethBigCrook ? .28 : 0);
+      t2.rotation.x = RC.rand(-.2, .1);
+      t2.position.x = .014;
+      teethGroup.add(t1, t2);
+      /* lower teeth peeking */
+      const t3 = box(.05, .018, .018, tm);
+      t3.position.y = -.028; teethGroup.add(t3);
+    }
+    /* crooked jaw: whole dental arch sits askew */
+    if (S.jawCrook) {
+      teethGroup.rotation.z = .32;
+      teethGroup.position.x += .022;
+      teethGroup.position.y -= .004;
+    }
 
     /* whiskers */
     const wGeo = new THREE.CylinderGeometry(.0022, .0009, .13, 4);
-    const wMat = M.black(.4, .6);
+    const wMat = S.dirtyWhisk ? M.chip(0x6a5628) : M.black(.4, .6);
     [-1, 1].forEach(side => {
       for (let i = 0; i < 3; i++) {
         const w = new THREE.Mesh(wGeo, wMat);
-        w.position.set(.02 * side, .085 + i * .012, .07 + .4 * S.snoutLen);
-        w.rotation.z = Math.PI / 2 + side * RC.rand(-.15, .15);
+        w.position.set(.02 * side, .085 + i * .012, snBase + snFL * 1.55);
+        w.rotation.z = Math.PI / 2 + side * RC.rand(-.15, .15) * (S.dirtyWhisk ? 1.6 : 1);
         w.rotation.y = side * RC.rand(.5, .95);
+        if (S.dirtyWhisk) {   /* greasy whiskers: bent, matted, some dangling */
+          w.rotation.z += side * .22 * (i - 1);
+          w.rotation.x += .5;
+          if (i === 1) {
+            const dab = blob(.006, .004, .004, M.chip(0x7a6a3a));
+            dab.position.set(.026 * side + snBend * .05, .1, snBase + snFL * 1.3);
+            headG.add(dab);
+          }
+        }
         headG.add(w);
       }
     });
 
     /* eyes: white + sunken + droop lid */
-    const eyeMat = M.eye(), irisMat = M.chip(S.iris), lidMat = furMat;
+    const eS = S.eyeScale, eZ = .085 + (eS > 1.3 ? (eS - 1.3) * .07 : 0);
+    const eyeMat = S.eyeBlood ? M.eyeBlood() : M.eye(), irisMat = M.chip(S.iris), lidMat = furMat;
     [-1, 1].forEach(side => {
       const e = new THREE.Group();
-      e.position.set(.055 * side, .19, .085);
+      e.position.set(.055 * side, .19, eZ);
       headG.add(e); bones['eye' + (side < 0 ? 'L' : 'R')] = e;
-      const white = blob(.026, .026, .026, eyeMat);
+      const white = blob(.026 * eS, .026 * eS, .026 * eS, eyeMat);
       white.rotation.x = .35;
       e.add(white);
-      const iris = blob(.011, .011, .006, irisMat);
-      iris.position.z = .023; iris.rotation.x = .35;
+      const iris = blob(.011 * eS, .011 * eS, .006 * eS, irisMat);
+      iris.position.z = .023 * eS; iris.rotation.x = .35;
+      /* wall-eyed / cross-eyed drift of the whole pupil stack */
+      if (S.eyeCross) {
+        iris.position.x = -.006 * side;
+        iris.position.y = -.002 * side;
+      }
       e.add(iris);
-      const pupil = blob(.0052, .0052, .004, M.black(.2, .8));
-      pupil.position.z = .027; e.add(pupil);
-      const lid = blob(.03, .014 + .01 * S.droop, .026, lidMat);
+      const pupil = blob(.0052 * eS, .0052 * eS, .004 * eS, M.black(.2, .8));
+      pupil.position.set(S.eyeCross ? -.014 * side : 0, S.eyeCross ? -.005 * side : 0, .027 * eS);
+      e.add(pupil);
+      const lid = blob(.03 * eS, .014 + .01 * S.droop, .026 * eS, lidMat);
       lid.position.set(0, .02 + .012 * S.droop, .004);
       e.add(lid);
       /* squint bags */
       const bag = blob(.024, .009, .02, skinMat);
       bag.position.set(0, -.02, .008); e.add(bag);
+      /* red sore rims */
+      if (S.eyeBlood) {
+        const sore = blob(.02, .008, .02, M.chip(0x8a2a22));
+        sore.position.set(0, -.012, .012); e.add(sore);
+      }
     });
 
-    /* unibrow */
+    /* misshapen side hump (deformed mutants) */
+    if (S.sideHump) {
+      const hump = blob(.11, .09, .1, furMat);
+      hump.position.set(.07, .40, -.10);
+      hump.rotation.z = .4; torso.add(hump);
+    }
     const brow = box(.1, .012, .012, furMat);
     brow.position.set(0, .225, .095);
     brow.rotation.z = RC.rand(-.06, .06);
@@ -179,6 +300,15 @@
       w.position.set(Math.cos(a) * .12 * r * side(r), .11 + Math.sin(a) * .06 * r, .11 + Math.abs(Math.cos(a)) * .05);
       headG.add(w);
     }
+    /* body warts: stalks on the trunk too */
+    if (S.wartsBody) {
+      for (let i = 0; i < 9; i++) {
+        const a = RC.rand(0, Math.PI * 2);
+        const w = blob(.014, .014, .014, wartMat);
+        w.position.set(Math.cos(a) * .17 * W, RC.rand(.05, .42), .13 + Math.abs(Math.sin(a)) * .05);
+        torso.add(w);
+      }
+    }
     /* scars */
     const scarMat = M.chip(0x9a5f55);
     for (let i = 0; i < S.scars; i++) {
@@ -188,23 +318,73 @@
       sc.position.z += Math.abs(sc.position.x) * .1;
       headG.add(sc);
     }
+    if (S.scarsBody) {
+      for (let i = 0; i < 3; i++) {
+        const sc = box(.006, RC.rand(.14, .3), .003, scarMat);
+        sc.position.set(RC.rand(-.14, .14) * W, RC.rand(.08, .4), .145);
+        sc.rotation.z = RC.lerp(-1, 1, i / 2);
+        torso.add(sc);
+      }
+    }
+    /* raised red pimples w/ whiteheads */
+    if (S.pimples) {
+      const pkMat = M.chip(0x9a3830), tipMat = M.chip(0xe8dcc0);
+      for (let i = 0; i < 7; i++) {
+        const a = RC.rand(0, Math.PI * 2), r = RC.rand(.4, .95);
+        const p = blob(.0075, .0075, .0075, pkMat);
+        p.position.set(Math.cos(a) * .12 * r * side(r), .12 + Math.sin(a) * .07 * r, .1 + Math.abs(Math.cos(a)) * .05);
+        headG.add(p);
+        const tp = blob(.003, .003, .003, tipMat);
+        tp.position.copy(p.position); tp.position.z += .006;
+        headG.add(tp);
+      }
+      /* a crop on one shoulder for good measure */
+      const pSh = blob(.01, .01, .01, pkMat);
+      pSh.position.set(.09 * side(1) * W, .47, .05);
+      torso.add(pSh);
+    }
+    /* skin blemishes: sun blotches & liver spots on the bare face */
+    if (S.blemish) {
+      const spots = [0x7a4a3a, 0x5c3a2a, 0x8a5a4a];
+      for (let i = 0; i < 10; i++) {
+        const a = RC.rand(0, Math.PI * 2), r = RC.rand(.3, .9);
+        const sp = blob(.012, .005, .01, M.chip(RC.pick(spots)));
+        sp.position.set(Math.cos(a) * .12 * r * side(r), .12 + Math.sin(a) * .07 * r, .1 + Math.abs(Math.cos(a)) * .055);
+        sp.rotation.x = .4;
+        headG.add(sp);
+      }
+    }
+    /* greasy missing-fur patches across the hide */
+    if (S.furPatches) {
+      const patchMat = M.skin(skinHex);
+      const spotsX = [chest, belly, pelvis, refs.shL && refs.shL.children[0], refs.shR && refs.shR.children[0]].filter(Boolean);
+      spotsX.forEach(host => {
+        for (let i = 0; i < 2; i++) {
+          const a = RC.rand(0, Math.PI * 2);
+          const patch = blob(.07, .05, .045, patchMat);
+          patch.position.set(Math.cos(a) * .1 * W, host === belly ? .16 : .36 + (host === chest ? .05 : 0), -.14 + Math.sin(a) * .03);
+          patch.rotation.set(RC.rand(-1, 1), 0, RC.rand(-1, 1));
+          (host.parent || torso).add(patch);
+        }
+      });
+    }
 
     /* ---------- arms ---------- */
-    const armR = S.limp ? RC.rand(.8, .95) : 1;  // char asymmetry
+    const armR = S.limp ? RC.rand(.8, .95) : (S.armLenR || 1);  // char asymmetry
     const armL = 1;
     const makeArm = (sideX, lenF) => {
       const sh = new THREE.Group();
-      sh.position.set(.25 * W * sideX, .45, 0);
+      sh.position.set(S.shoulderW * W * sideX, .45 + (sideX > 0 ? (S.shROffset || 0) : 0), 0);
       torso.add(sh);
       const studded = blob(.055 * W, .07, .06, furMat);
       sh.add(studded);
       const up = new THREE.Group(); sh.add(up);
-      up.add(limb(.30, .045 * W, .04 * W, furMat));
+      up.add(limb(.30 * lenF, .045 * W * S.limbRA, .04 * W * S.limbRA, furMat));
       const el = new THREE.Group();
-      el.position.y = -.30; up.add(el);
-      el.add(limb(.27, .038 * W, .034 * W, furMat));
+      el.position.y = -.30 * lenF; up.add(el);
+      el.add(limb(.27 * lenF, .038 * W * S.limbRA, .034 * W * S.limbRA, furMat));
       const hand = new THREE.Group();
-      hand.position.y = -.27; el.add(hand);
+      hand.position.y = -.27 * lenF; el.add(hand);
       const palm = blob(.045, .05, .028, skinMat);
       palm.position.y = -.02; hand.add(palm);
       for (let f = 0; f < 3; f++) {
@@ -223,14 +403,16 @@
     /* ---------- legs ---------- */
     const makeLeg = sideX => {
       const th = new THREE.Group();
-      th.position.set(.115 * W * sideX, .02, 0);
+      th.position.set(.115 * W * S.hipsW * sideX, .02, 0);
       hips.add(th);
-      th.add(limb(.42, .062 * W, .048 * W, furMat));
+      /* asymmetric mutant: right leg grew wrong */
+      const legK = (S.legLenR != null && sideX > 0) ? S.legLenR : 1;
+      th.add(limb(.42 * legS * legK, .062 * W * S.limbRL, .048 * W * S.limbRL, furMat));
       const sh = new THREE.Group();
-      sh.position.y = -.42; th.add(sh);
-      sh.add(limb(.4, .048 * W, .038 * W, furMat));
+      sh.position.y = -.42 * legS * legK; th.add(sh);
+      sh.add(limb(.4 * legS * legK, .048 * W * S.limbRL, .038 * W * S.limbRL, furMat));
       const ft = new THREE.Group();
-      ft.position.y = -.4; sh.add(ft);
+      ft.position.y = -.4 * legS * legK; sh.add(ft);
       const foot = blob(.05 * W, .04, .1, skinMat);
       foot.position.set(0, -.015, .035); ft.add(foot);
       /* ratty toes */
@@ -279,6 +461,7 @@
       garments: {},   // slot -> group
       anim: { phase: 0, speed: 0, mode: 'idle', poseAmt: 0, poseType: S.pose, breathe: Math.random() * 7 },
       scaleAll: s,
+      legH: .82 * legS + .1 * s,   /* standing hip height (used by animation) */
     };
     chr.setGarment = RCC_setGarment(chr);
     applyLimp(chr);
@@ -385,7 +568,7 @@
       R.upR.rotation.x = Math.sin(p) * .48 * w;
       R.elL.rotation.x = -.35 + Math.sin(p + Math.PI * 1.2) * .3;
       R.elR.rotation.x = -.35 + Math.sin(p + .2) * .3;
-      chr.bones.hips.position.y = (0.92 * chr.scaleAll) + Math.abs(Math.sin(p)) * .035 + Math.sin(p * 2) * .012;
+      chr.bones.hips.position.y = ((chr.legH || 0.92 * chr.scaleAll)) + Math.abs(Math.sin(p)) * .035 + Math.sin(p * 2) * .012;
       chr.bones.torso.rotation.z = Math.sin(p) * .06;
       chr.bones.skull.rotation.y = Math.sin(p * .5) * .12;
       /* shuffling head-bob & tail whip */
@@ -398,7 +581,7 @@
     } else if (A.mode === 'pose') {
       A.poseT = (A.poseT || 0) + dt;
       const t = A.poseT, puff = Math.sin(t * 2.3);
-      chr.bones.hips.position.y = 0.92 * chr.scaleAll + Math.sin(t * 1.8) * .01;
+      chr.bones.hips.position.y = ((chr.legH || 0.92 * chr.scaleAll)) + Math.sin(t * 1.8) * .01;
       const tp = A.poseType;
       if (tp === 0) {            // flex & menace
         R.upR.rotation.x = -lerpTo(-2.5, .1, t) + puff * .03;
@@ -430,7 +613,7 @@
     } else {
       /* idle: greasy sway + breathing + ear flick */
       B.belly.scale.x = 1.0 + Math.sin(A.breathe) * .02;
-      chr.bones.hips.position.y = .92 * chr.scaleAll + Math.sin(A.breathe) * .006;
+      chr.bones.hips.position.y = (chr.legH || .92 * chr.scaleAll) + Math.sin(A.breathe) * .006;
       chr.bones.torso.rotation.z = Math.sin(A.breathe * .4) * .03;
       chr.bones.skull.rotation.y = Math.sin(A.breathe * .31) * .2;
       R.upL.rotation.x = Math.sin(A.breathe * .5) * .06;

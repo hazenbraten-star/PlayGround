@@ -138,9 +138,15 @@
           this.look.set(p.x, 1.5, p.z);
           break;
         }
+        case 'creator': {
+          /* the bio-assembly studio owns the shot */
+          const okP = RC.creatorPoseUpdate && RC.creatorPoseUpdate(this.desired, this.look);
+          if (!okP) { this.desired.set(0, 1.75, 4.6); this.look.set(0, 1.12, 0); }
+          break;
+        }
       }
-      const k = 1 - Math.exp(-dt * 3.2);
-      camera.position.lerp(this.desired, k);
+      if (this.mode === 'creator') camera.position.copy(this.desired);  /* studio tracks its own orbit */
+      else camera.position.lerp(this.desired, 1 - Math.exp(-dt * 3.2));
       camera.lookAt(this.look);
       if (this.shake > 0) {
         this.shake -= dt;
@@ -159,8 +165,13 @@
 
   /* ------------------------------------------------ contestants */
   function makeContestant(isPlayer, name) {
-    const spec = RC.randomRatSpec();
-    spec.hairStyle = RC.pick(['messy', 'mohawk', 'scrags', 'pigtails', 'bald']);
+    let spec;
+    if (isPlayer && RC.playerUberSpec) {
+      spec = RC.playerUberSpec;                    /* STEP2: saved creator config */
+    } else {
+      spec = RC.randomRatSpec();
+      spec.hairStyle = RC.pick(['messy', 'mohawk', 'scrags', 'pigtails', 'bald']);
+    }
     const chr = RC.buildRat(spec);
     scene.add(chr.group);
     return {
@@ -292,11 +303,67 @@
     UI.setName(nm ? nm.name : '…');
   }
 
-  document.getElementById('btnStart').onclick = () => {
+  /* ------------------------------------------------ character lab (STEP 2) */
+  RC.creatorSetMode = m => Cam.set(m);
+  RC.creatorSfx = kind => { if (Audio[kind]) Audio[kind](); };
+
+  function applyPlayerCharacter() {
+    if (!RC.playerUberSpec) return;
+    if (!player) player = makeContestant(true, RC.playerName || 'THE NEW MEAT');
+    const old = player.chr;
+    RC.clearOutfit(old);
+    RC.disposeTree(old.group);
+    player.chr = RC.buildRat(RC.playerUberSpec);
+    player.name = RC.playerName || player.name;
+    player.chr.anim.mode = 'idle';
+    player.chr.group.position.set(0, .12, -2);
+    updatePlayerName();
+  }
+
+  function confirmCharacter(saved) {
     Audio.boot();
     Audio.stinger();
-    UI.hideTitle();
+    /* bring the venue back */
+    W.root.visible = true;
+    juryRats.forEach(j => j.chr.group.visible = true);
+    /* save & apply the full configuration, then hit the runway */
+    RC.playerUberSpec = RC.specFromConfig(saved);
+    RC.playerName = saved.name || 'UNNAMED FREAK';
+    applyPlayerCharacter();
     runMatch();
+  }
+  RC.creatorOnConfirm(confirmCharacter);
+
+  /* orbit / zoom input for the studio (creator mode only) */
+  canvas.addEventListener('pointerdown', e => {
+    if (Cam.mode !== 'creator') return;
+    creatorDrag = { x: e.clientX, y: e.clientY };
+  });
+  let creatorDrag = null;
+  addEventListener('pointermove', e => {
+    if (!creatorDrag) return;
+    RC.creatorOrbit(e.clientX - creatorDrag.x, e.clientY - creatorDrag.y);
+    creatorDrag = { x: e.clientX, y: e.clientY };
+  });
+  addEventListener('pointerup', () => { creatorDrag = null; });
+  addEventListener('pointercancel', () => { creatorDrag = null; });
+  canvas.addEventListener('wheel', e => {
+    if (Cam.mode !== 'creator') return;
+    RC.creatorZoom(e.deltaY);
+    e.preventDefault();
+  }, { passive: false });
+
+  RC.creatorBoot(scene);
+
+  document.getElementById('btnStart').onclick = () => {
+    Audio.boot();
+    Audio.click();
+    UI.hideTitle();
+    /* swap the venue for the bio-assembly studio */
+    W.root.visible = false;
+    juryRats.forEach(j => j.chr.group.visible = false);
+    contestants.forEach(c => { c.chr.group.visible = false; });
+    RC.creatorOpenScreen();
   };
   document.getElementById('btnNext').onclick = () => {
     Audio.click();
@@ -581,6 +648,7 @@
     last = now;
     const t = now / 1000;
     RC.Tweens.update(dt);
+    RC.creatorTick(dt);
     W.tick(dt, t);
     RC.tickDetails(dt, t);
     contestants.forEach(c => RC.animateRat(c.chr, dt));

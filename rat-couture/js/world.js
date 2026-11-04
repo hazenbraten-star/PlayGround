@@ -8,6 +8,10 @@
   RC.buildWorld = function (scene) {
     const W = { lights: [], flicker: [], crowd: [], bulbs: [] };
 
+    /* everything lives under one root group so screens can toggle the venue */
+    const root = W.root = new THREE.Group();
+    scene.add(root);
+
     /* floor */
     const floor = new THREE.Mesh(
       new THREE.PlaneGeometry(60, 60),
@@ -15,7 +19,7 @@
     );
     floor.rotation.x = -Math.PI / 2;
     floor.receiveShadow = true;
-    scene.add(floor);
+    root.add(floor);
 
     /* raised runway strip: players walk -z (backstage) to +z (jury) */
     const runway = new THREE.Mesh(
@@ -24,7 +28,7 @@
     );
     runway.position.set(0, .06, -1);
     runway.receiveShadow = true; runway.castShadow = false;
-    scene.add(runway);
+    root.add(runway);
 
     const edgeCol = [0xff2a6d, 0x2af5ff];
     [-1, 1].forEach(sd => {
@@ -34,7 +38,7 @@
           M.emissive(edgeCol[(i + (sd < 0 ? 0 : 1)) % 2], 2.4)
         );
         b.position.set(sd * 1.38, .13, -11.5 + i * 1.55);
-        scene.add(b);
+        root.add(b);
         W.bulbs.push(b);
       }
     });
@@ -46,18 +50,18 @@
       const wall = new THREE.Mesh(new THREE.BoxGeometry(60, 12, .6), dirtyWall);
       wall.position.set(0, 3.5, z + (z > 0 ? 8 : 0));
       wall.receiveShadow = true;
-      scene.add(wall);
+      root.add(wall);
     });
     [-1, 1].forEach(sd => {
       const wall = new THREE.Mesh(new THREE.BoxGeometry(.6, 12, 44), M.concrete(12));
       wall.position.set(sd * 14, 3.5, -2);
       wall.receiveShadow = true;
-      scene.add(wall);
+      root.add(wall);
       /* girders */
       for (let i = 0; i < 6; i++) {
         const girder = new THREE.Mesh(new THREE.BoxGeometry(.25, 12, .3), M.rust(4));
         girder.position.set(sd * 13.75, 3.5, -20 + i * 7.4);
-        scene.add(girder);
+        root.add(girder);
       }
     });
 
@@ -67,7 +71,7 @@
         const p = new THREE.Mesh(new THREE.CylinderGeometry(.28, .34, 11, 10), M.rust(3));
         p.position.set(sd * 5.2, 5.5, -12 + i * 7);
         p.castShadow = true;
-        scene.add(p);
+        root.add(p);
         W.pillars = W.pillars || [];
         /* hanging cage lamps from ceiling */
         const lampG = new THREE.Group();
@@ -83,7 +87,7 @@
         bulb.position.y = -.08; lampG.add(bulb);
         W.bulbMats = W.bulbMats || []; W.bulbMats.push(bulbMat);
         lampG.position.set(RC.rand(-9, 9), 7.4, -14 + i * 6 + RC.rand(-2, 2));
-        scene.add(lampG);
+        root.add(lampG);
         W.hanging = W.hanging || [];
         W.hanging.push({ obj: lampG, ph: RC.rand(0, 7) });
       }
@@ -98,7 +102,7 @@
       pipe.rotation.z = Math.PI / 2;
       pipe.rotation.y = RC.rand(-.06, .06);
       pipe.position.set(0, 9.5 + i * 1.1, -20 + i * 4);
-      scene.add(pipe);
+      root.add(pipe);
     }
 
     /* ---- neon signage on the back wall ---- */
@@ -111,10 +115,10 @@
       });
       const sign = new THREE.Mesh(new THREE.PlaneGeometry(w, h), texMat);
       sign.position.copy(pos); sign.rotation.y = rotY;
-      scene.add(sign);
+      root.add(sign);
       const glow = new THREE.PointLight(color, 1.4, 14);
       glow.position.copy(pos); glow.position.z += .8;
-      scene.add(glow);
+      root.add(glow);
       W.signs.push({ mat: texMat, light: glow, base: 1.4, ph: RC.rand(0, 9), sp: RC.rand(6, 14) });
       return sign;
     }
@@ -138,14 +142,14 @@
     plate.position.set(0, .82, .81);
     booth.add(plate);
     booth.position.set(0, .12, 13);
-    scene.add(booth);
+    root.add(booth);
     W.booth = booth;
 
     /* jury lamp (harsh, from above) */
     const juryLamp = new THREE.SpotLight(0xfff2d8, 2.2, 20, .8, .4, 1.2);
     juryLamp.position.set(0, 9, 15.5);
     juryLamp.target = booth;
-    scene.add(juryLamp); W.lights.push(juryLamp);
+    root.add(juryLamp); W.lights.push(juryLamp);
 
     /* jury rats (seated) — meshes added after RC is ready */
     W.jurySeats = [];
@@ -180,7 +184,7 @@
       c.position.set(x, 0, z);
       c.lookAt(RC.rand(-4, 4), .8, -z * .6);
       c.userData = { bob: RC.rand(0, 7), sp: RC.rand(1.5, 3) };
-      scene.add(c); W.crowd.push(c);
+      root.add(c); W.crowd.push(c);
     }
 
     /* dust motes */
@@ -195,31 +199,31 @@
     dg.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     const dustMat = new THREE.PointsMaterial({ color: 0x9a8f7a, size: .04, transparent: true, opacity: .5 });
     const dust = new THREE.Points(dg, dustMat);
-    scene.add(dust);
+    root.add(dust);
     W.dust = dust;
 
     /* ---- atmospheric lighting ---- */
     scene.fog = new THREE.FogExp2(0x07070a, .028);
 
     const hemi = new THREE.HemisphereLight(0x3a3f4a, 0x0a0a08, .5);
-    scene.add(hemi);
+    root.add(hemi);
 
     /* runway key light, follows the walker */
     const key = new THREE.SpotLight(0xffe8c8, 3.2, 30, .5, .45, 1);
     key.position.set(0, 10.5, 6);
-    scene.add(key); W.key = key;
+    root.add(key); W.key = key;
     const keyTarget = new THREE.Object3D();
-    scene.add(keyTarget);
+    root.add(keyTarget);
     key.target = keyTarget; W.keyTarget = keyTarget;
 
     /* pink + cyan rim wash */
     const rimA = new THREE.SpotLight(0xff2a6d, 2.0, 40, .7, .6, 1.4);
     rimA.position.set(-9, 7, -6);
-    scene.add(rimA); W.lights.push(rimA);
+    root.add(rimA); W.lights.push(rimA);
     W.rimA = rimA;
     const rimB = new THREE.SpotLight(0x2af5ff, 1.6, 40, .7, .6, 1.4);
     rimB.position.set(9, 7, -6);
-    scene.add(rimB); W.lights.push(rimB);
+    root.add(rimB); W.lights.push(rimB);
     W.rimB = rimB;
 
     /* ---- ANIMATIONS (buzz, flicker, sway, crowd bob, dust) ---- */

@@ -95,6 +95,92 @@
     });
   };
 
+  /* ---------------- PATCHY FUR (big skin-colored loss zones) --------- */
+  T.furPatchy = function (base, skinHex) {
+    return cv(256, (g, s) => {
+      g.fillStyle = base; g.fillRect(0, 0, s, s);
+      const dark = shade(base, .55), light = shade(base, 1.35);
+      for (let i = 0; i < 1100; i++) {         // hair shafts
+        g.globalAlpha = RC.rand(.12, .42);
+        g.strokeStyle = Math.random() < .5 ? dark : light;
+        g.lineWidth = RC.rand(.6, 1.3);
+        const x = RC.rand(0, s), y = RC.rand(0, s);
+        g.beginPath(); g.moveTo(x, y); g.lineTo(x + RC.rand(-4, 4), y + RC.rand(-6, 6)); g.stroke();
+      }
+      g.globalAlpha = 1;
+      grimeBlots(g, s, 8, '#1c150d');
+      /* raw pink bald continents */
+      for (let i = 0; i < 9; i++) {
+        const x = RC.rand(0, s), y = RC.rand(0, s), r = RC.rand(s * .09, s * .26);
+        g.globalAlpha = RC.rand(.85, 1);
+        g.fillStyle = skinHex;
+        g.beginPath(); g.ellipse(x, y, r, r * RC.rand(.55, 1), RC.rand(0, Math.PI), 0, 7); g.fill();
+        g.globalAlpha = RC.rand(.15, .4); g.fillStyle = '#b8625a';
+        g.beginPath(); g.ellipse(x, y, r * .8, r * .6, 0, 0, 7); g.fill();
+        g.globalAlpha = 1;
+        g.strokeStyle = '#2a2018'; g.lineWidth = 1.2;
+        g.beginPath(); g.ellipse(x, y, r, r * .7, 0, 0, 7); g.stroke();
+      }
+      speckle(g, s, 70, .5, 1.6, '#0e0b07', .15, .5);
+    });
+  };
+
+  /* ---------------- ALMOST HAIRLESS PINK SKIN ------------------------ */
+  T.furHairless = function () {
+    return cv(256, (g, s) => {
+      const gr = g.createLinearGradient(0, 0, 0, s);
+      gr.addColorStop(0, '#d9a48e'); gr.addColorStop(.5, '#c98f7c'); gr.addColorStop(1, '#b57e70');
+      g.fillStyle = gr; g.fillRect(0, 0, s, s);
+      speckle(g, s, 300, .4, 1.4, '#a06a5c', .15, .4);   // pink blotching
+      speckle(g, s, 60, .5, 1.8, '#8a4a44', .1, .35);    // raw patches
+      grimeBlots(g, s, 6, '#5c3a34');
+      /* a few sad remaining hairs, wrongly distributed */
+      g.strokeStyle = '#3a2c20'; g.lineWidth = 1;
+      for (let i = 0; i < 55; i++) {
+        const x = RC.rand(0, s), y = RC.rand(0, s);
+        g.globalAlpha = RC.rand(.2, .55);
+        g.beginPath(); g.moveTo(x, y);
+        g.lineTo(x + RC.rand(-3, 3), y + RC.rand(4, 11)); g.stroke();
+      }
+      g.globalAlpha = 1;
+    });
+  };
+
+  /* ---------------- HEAVY BLOODSHOT EYE ------------------------------- */
+  T.eyeBlood = function () {
+    return cv(64, (g, s) => {
+      const gr = g.createRadialGradient(s / 2, s / 2, 3, s / 2, s / 2, s / 2);
+      gr.addColorStop(0, '#f6d8c4'); gr.addColorStop(.6, '#eba892'); gr.addColorStop(1, '#dd8f80');
+      g.fillStyle = gr; g.fillRect(0, 0, s, s);
+      g.strokeStyle = '#b02018'; g.lineWidth = 1.1;
+      for (let i = 0; i < 30; i++) {
+        g.globalAlpha = RC.rand(.4, .95);
+        const a = RC.rand(0, Math.PI * 2), r0 = s * .14;
+        g.beginPath();
+        g.moveTo(s / 2 + Math.cos(a) * r0, s / 2 + Math.sin(a) * r0);
+        g.lineTo(s / 2 + Math.cos(a) * (s * .48), s / 2 + Math.sin(a) * (s * .48 + RC.rand(0, 4)));
+        g.stroke();
+      }
+      g.globalAlpha = .6; g.fillStyle = '#c8402a';
+      for (let i = 0; i < 8; i++) {
+        g.beginPath(); g.arc(s / 2 + RC.rand(-14, 14), s / 2 + RC.rand(-14, 14), RC.rand(1.2, 3), 0, 7); g.fill();
+      }
+      g.globalAlpha = 1;
+    });
+  };
+
+  /* ---------------- ROT (dark rotten teeth) --------------------------- */
+  T.teethRot = function () {
+    return cv(64, (g, s) => {
+      g.fillStyle = '#7a6420'; g.fillRect(0, 0, s, s);
+      speckle(g, s, 140, .5, 2.4, '#3c2e0c', .2, .55);
+      speckle(g, s, 90, .5, 2, '#4a5218', .15, .5);       // rot-green
+      speckle(g, s, 40, .5, 2.2, '#1a140a', .25, .6);     // cavities
+      speckle(g, s, 24, .4, 1.4, '#6a4a2a', .3, .6);      // plaque
+      grimeBlots(g, s, 8, '#20180a');
+    });
+  };
+
   /* ---------------- RUST ---------------- */
   T.rust = function () {
     return cv(256, (g, s) => {
@@ -280,6 +366,26 @@
   M.eye = function () {
     return cached('eye', () => new THREE.MeshStandardMaterial({
       map: tex(T.eye()), roughness: .25, metalness: .1
+    }));
+  };
+  M.eyeBlood = function () {
+    return cached('eyeBlood', () => new THREE.MeshStandardMaterial({
+      map: tex(T.eyeBlood()), roughness: .22, metalness: .05
+    }));
+  };
+  M.teethRot = function () {
+    return cached('teethRot', () => new THREE.MeshStandardMaterial({
+      map: tex(T.teethRot()), roughness: .45, metalness: 0
+    }));
+  };
+  M.furPatchy = function (hex, skinHex) {
+    return cached('furP' + hex + skinHex, () => new THREE.MeshStandardMaterial({
+      map: tex(T.furPatchy(hex, skinHex), 2), color: 0xffffff, roughness: .95, metalness: 0
+    }));
+  };
+  M.furHairless = function () {
+    return cached('furH', () => new THREE.MeshStandardMaterial({
+      map: tex(T.furHairless(), 2), color: 0xffffff, roughness: .7, metalness: 0
     }));
   };
   M.gum = function () {
