@@ -35,7 +35,7 @@
     m.position.set(x, y, z); m.castShadow = true;
     return m;
   }
-  function row(list, anchor) { return list.map(o => [anchor, o]); }
+  function row(list, anchor) { return list.map(o => [o, anchor]); }
 
   /* ==================== HEAD GEAR ==================== */
   B.gasMask = chr => {
@@ -1054,9 +1054,9 @@
   /* ==================== wear management ==================== */
   RC.wear = function (chr, catId, itemDef) {
     const slot = catId;
-    /* clear old */
+    /* clear old  (pieces are stored as [obj, anchorName]) */
     const old = chr.outfitPieces && chr.outfitPieces[slot];
-    if (old) old.forEach(([anchor, obj]) => RC.disposeTree(obj));
+    if (old) old.forEach(p => RC.disposeTree(p[0]));
     chr.outfitPieces = chr.outfitPieces || {};
     chr.outfitPieces[slot] = null;
     if (!itemDef) return;
@@ -1071,7 +1071,7 @@
   RC.clearOutfit = function (chr) {
     if (!chr.outfitPieces) return;
     Object.values(chr.outfitPieces).forEach(list => {
-      if (list) list.forEach(([a, o]) => RC.disposeTree(o));
+      if (list) list.forEach(p => RC.disposeTree(p[0]));
     });
     chr.outfitPieces = {};
   };

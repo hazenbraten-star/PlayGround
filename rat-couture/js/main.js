@@ -1,6 +1,6 @@
 /* ================= main.js — boot, cameras, audio, game loop ========== */
 (function () {
-  const RC = window.RC, THREE = window.THREE, UI = RC.ui;
+  const RC = window.RC, THREE = window.THREE, UI = RC.ui, M = RC.materials;
   if (!window.THREE) { UI.err('three.js failed to load'); return; }
 
   /* ------------------------------------------------ renderer & scene */
@@ -44,8 +44,7 @@
   });
 
   /* ------------------------------------------------ audio: crude synth */
-  const Audio = (function () {
-    let ctx = null;
+  const Audio = (function () {    let ctx = null;
     const on = () => !!ctx;
     function boot() {
       if (ctx) return;
@@ -83,6 +82,7 @@
       buzz: () => { tone(55, .6, 'sawtooth', .028, 55); tone(110, .6, 'sine', .02, 108); },
     };
   })();
+  RC.audio = Audio;
 
   /* ------------------------------------------------ camera director */
   const Cam = {
@@ -159,12 +159,19 @@
 
   /* ------------------------------------------------ contestants */
   function makeContestant(isPlayer, name) {
-    const spec = RC.randomRatSpec();
-    spec.hairStyle = RC.pick(['messy', 'mohawk', 'scrags', 'pigtails', 'bald']);
+    /* STEP 2: a player-confirmed character is rebuilt exactly from its saved config */
+    let spec, nm = name;
+    if (isPlayer && RC.playerConfig) {
+      spec = Object.assign({}, RC.playerConfig.spec);
+      nm = RC.playerConfig.name;
+    } else {
+      spec = RC.randomRatSpec();
+      spec.hairStyle = RC.pick(['messy', 'mohawk', 'scrags', 'pigtails', 'bald']);
+    }
     const chr = RC.buildRat(spec);
     scene.add(chr.group);
     return {
-      isPlayer, name, chr, score: 0, roundScore: 0, outfitItems: [],
+      isPlayer, name: nm, chr, score: 0, roundScore: 0, outfitItems: [],
       ai: null,
     };
   }
@@ -275,28 +282,20 @@
   const ROUNDS = 5;
 
   const btnSendDummy = document.getElementById('btnSend');
+  /* STEP 2: all "make me another freak" paths route through the flesh atelier */
   document.getElementById('btnRestyle').onclick = () => {
     Audio.boot(); Audio.click();
-    player = player || makeContestant(true, RC.PLAYER_NAMES[RC.ri(0, RC.PLAYER_NAMES.length - 1)]);
-    scene.remove(player.chr.group);
-    player.chr = RC.buildRat(RC.randomRatSpec());
-    const s = lineupSpot(0);
-    player.chr.group.position.set(Cam.mode === 'title' ? 0 : s.x, Cam.mode === 'title' ? .12 : s.y, Cam.mode === 'title' ? -2 : s.z);
-    scene.add(player.chr.group);
-    player.isPlayer = true;
-    updatePlayerName();
-    Audio.thud();
+    RC.creator.open();
   };
   function updatePlayerName() {
-    const nm = contestants.find(c => c.isPlayer);
-    UI.setName(nm ? nm.name : '…');
+    const nm = RC.playerConfig ? RC.playerConfig.name : (contestants.find(c => c.isPlayer) || {}).name;
+    UI.setName(nm || '…');
   }
 
   document.getElementById('btnStart').onclick = () => {
     Audio.boot();
-    Audio.stinger();
-    UI.hideTitle();
-    runMatch();
+    Audio.click();
+    RC.creator.open();
   };
   document.getElementById('btnNext').onclick = () => {
     Audio.click();
@@ -304,10 +303,9 @@
     _resolveRoundBoard && _resolveRoundBoard();
   };
   document.getElementById('btnAgain').onclick = () => {
-    Audio.stinger();
+    Audio.click();
     UI.finaleHide();
-    UI.scoreboard([]);
-    startMatch !== undefined && startMatch();
+    RC.creator.open();
   };
   let _resolveRoundBoard = null;
   function awaitRoundBoard() {
@@ -542,15 +540,11 @@
     }
   }
 
-  /* keep player character & identity, restage both */
+  /* keep player identity (name + confirmed config), restage everyone */
   function newGameKeepPlayer() {
-    const oldPlayer = contestants.find(c => c.isPlayer);
-    const pName = oldPlayer && oldPlayer.name;
-    const pChr = oldPlayer && oldPlayer.chr;
     contestants.forEach(c => { scene.remove(c.chr.group); RC.clearOutfit(c.chr); });
     contestants = [];
-    const fresh = makeContestant(true, pName || RC.PLAYER_NAMES[RC.ri(0, RC.PLAYER_NAMES.length - 1)]);
-    if (pChr) { fresh.chr = pChr; }
+    const fresh = makeContestant(true, RC.playerConfig && RC.playerConfig.name);
     contestants.push(fresh);
     RC.shuffled(RC.RAT_NAMES).slice(0, 4).forEach(n => contestants.push(makeContestant(false, n)));
     contestants.forEach((c, i) => {
@@ -583,21 +577,33 @@
     RC.Tweens.update(dt);
     W.tick(dt, t);
     RC.tickDetails(dt, t);
-    contestants.forEach(c => RC.animateRat(c.chr, dt));
     juryRats.forEach(j => RC.animateRat(j.chr, dt));
-    Cam.update(dt, t);
-    renderer.render(scene, camera);
+    if (RC.creator && RC.creator.active) {
+      /* STEP 2: the flesh atelier owns the frame until you walk out of it */
+      RC.creator.update(dt, t);
+      RC.creator.render(renderer);
+    } else {
+      contestants.forEach(c => RC.animateRat(c.chr, dt));
+      Cam.update(dt, t);
+      renderer.render(scene, camera);
+    }
   }
   requestAnimationFrame(loop);
 
-  /* player character visible on title screen: give them a came appearance */
-  (function preTitleRat() {
-    player = makeContestant(true, RC.PLAYER_NAMES[RC.ri(0, RC.PLAYER_NAMES.length - 1)]);
-    player.chr.group.position.set(0, .12, -2);
-    player.chr.anim.mode = 'idle';
-    Cam.set('title', player);
-    UI.setName(player.name);
-    contestants.push(player);
-  })();
+  /* ------------------------------------------------ boot: straight into
+     the flesh atelier. The runway only opens once a freak is confirmed. */
+  player = null;
+  RC.creator.onConfirm = () => {
+    const cfg = RC.playerConfig;
+    Audio.boot();
+    Audio.stinger();
+    UI.hideTitle();
+    UI.finaleHide();
+    UI.hideRoundBoard && UI.hideRoundBoard();
+    UI.scoreboard([]);
+    UI.setName(cfg ? cfg.name : '…');
+    runMatch();
+  };
+  RC.creator.open();
 
 })();

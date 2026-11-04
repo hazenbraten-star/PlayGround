@@ -57,7 +57,7 @@
   </div>
 
   <!-- title screen -->
-  <div id="titleScreen">
+  <div id="titleScreen" class="hidden">
     <div class="titleGlow">RAT COUTURE</div>
     <div class="titleGlow2">— THE FILTHY RUNWAY —</div>
     <div class="titleTag">UNDERGROUND FASHION COMPETITION · SEWER LEVEL 4 · BY INVITATION ONLY (HA)</div>
@@ -68,6 +68,41 @@
     <button id="btnStart" class="rbtn start">ENTER THE FILTHY RUNWAY</button>
     <div class="titleFoot" id="errlog"></div>
     <div class="credit">FOUR AI VERMIN ARE ALREADY PICKING THEIR OUTFITS. THEY ARE UGLIER THAN YOU.</div>
+  </div>
+
+  <!-- STEP 2 · character creation — the flesh atelier -->
+  <div id="creator" class="hidden">
+    <div id="creatorHead">
+      <div class="crHeadL">
+        <div class="crKick">FLESH ATELIER · SEWER LEVEL 4 · SUBJECT INTAKE</div>
+        <div class="crTitle">SCULPT YOUR RAT HUMAN</div>
+        <div class="crRecipe" id="crRecipe">male · skinny · dirty grey</div>
+      </div>
+      <div id="viewBox">
+        <button class="vbtn active" data-yaw="0">FRONT</button>
+        <button class="vbtn" data-yaw="90">SIDE</button>
+        <button class="vbtn" data-yaw="180">BACK</button>
+        <div id="orbHint">DRAG THE MODEL TO ROTATE · SCROLL / ± TO ZOOM</div>
+      </div>
+    </div>
+
+    <aside id="creatorLeft" class="crPanel"></aside>
+    <aside id="creatorRight" class="crPanel"></aside>
+
+    <div id="zoomBtns">
+      <button id="zin" title="ZOOM IN">+</button>
+      <button id="zout" title="ZOOM OUT">−</button>
+    </div>
+
+    <div id="creatorFoot">
+      <div id="nameWrap">
+        <label for="ratName">SUBJECT NAME</label>
+        <input id="ratName" maxlength="22" placeholder="UNNAMED FREAK"
+               spellcheck="false" autocomplete="off" autocapitalize="characters">
+      </div>
+      <button id="btnFreak" class="rbtn">☣ CREATE RANDOM FREAK</button>
+      <button id="btnConfirm" class="rbtn send">ENTER THE FILTHY RUNWAY →</button>
+    </div>
   </div>
 
   <!-- scoreboard interstitial -->
@@ -97,6 +132,7 @@
 <script src="js/fashion.js"></script>
 <script src="js/world.js"></script>
 <script src="js/jury.js"></script>
+<script src="js/creator.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/errtrace.js"></script>
 <script>window.__trace=[];window.addEventListener('error',e=>{document.title+='|ERR '+e.message;

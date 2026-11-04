@@ -154,6 +154,31 @@
     });
   };
 
+  /* ---------------- EXTRA-BLOODSHOT EYES (character creator) --------- */
+  T.eyeBlood = function () {
+    return cv(64, (g, s) => {
+      g.drawImage(T.eye(), 0, 0);
+      g.strokeStyle = '#8a1a12'; g.lineWidth = 1.1;
+      for (let i = 0; i < 22; i++) {
+        g.globalAlpha = RC.rand(.5, .95);
+        const a = RC.rand(0, Math.PI * 2), r0 = s * .18;
+        g.beginPath();
+        g.moveTo(s / 2 + Math.cos(a) * r0, s / 2 + Math.sin(a) * r0);
+        g.lineTo(s / 2 + Math.cos(a) * (s * .55 + RC.rand(0, 6)), s / 2 + Math.sin(a) * (s * .55 + RC.rand(0, 6)));
+        g.stroke();
+      }
+      g.globalAlpha = 1;
+      for (let i = 0; i < 9; i++) {             // burst vessels / clots
+        g.fillStyle = '#7a150e';
+        g.beginPath();
+        g.arc(RC.rand(s * .25, s * .75), RC.rand(s * .25, s * .75), RC.rand(1, 3), 0, 7);
+        g.fill();
+      }
+      g.globalAlpha = .35; speckle(g, s, 24, .5, 1.2, '#c9a53a', .2, .5); // jaundice film
+      g.globalAlpha = 1;
+    });
+  };
+
   /* ---------------- YELLOWED TEETH ---------------- */
   T.teeth = function () {
     return cv(64, (g, s) => {
@@ -164,6 +189,23 @@
       for (let i = 0; i < 8; i++) {
         g.globalAlpha = RC.rand(.3, .7);
         g.beginPath(); g.arc(RC.rand(0, s), RC.rand(0, s), RC.rand(.7, 2.4), 0, 7); g.fill();
+      }
+      g.globalAlpha = 1;
+    });
+  };
+
+  /* ---------------- ROTTEN TEETH (brown-green decay film) ------------ */
+  T.teethRotten = function () {
+    return cv(64, (g, s) => {
+      g.fillStyle = '#9a8a44'; g.fillRect(0, 0, s, s);
+      speckle(g, s, 200, .5, 2.2, '#5c5a1e', .25, .6);
+      speckle(g, s, 120, .4, 1.8, '#3c3a14', .3, .7);
+      grimeBlots(g, s, 10, '#22200c');
+      speckle(g, s, 40, .4, 1.4, '#7a4a10', .2, .5);   // brown rot
+      speckle(g, s, 18, .5, 1.6, '#454e18', .3, .55);  // moss of neglect
+      for (let i = 0; i < 10; i++) {                  // deep craters
+        g.fillStyle = '#2a2410'; g.globalAlpha = .7;
+        g.beginPath(); g.arc(RC.rand(0, s), RC.rand(0, s), RC.rand(1, 3.2), 0, 7); g.fill();
       }
       g.globalAlpha = 1;
     });
@@ -275,6 +317,22 @@
   M.teeth = function () {
     return cached('teeth', () => new THREE.MeshStandardMaterial({
       map: tex(T.teeth()), roughness: .3, metalness: .05
+    }));
+  };
+  M.teethRotten = function () {
+    return cached('teethrot', () => new THREE.MeshStandardMaterial({
+      map: tex(T.teethRotten()), roughness: .5, metalness: .05
+    }));
+  };
+  M.eyeBlood = function () {
+    return cached('eyeblood', () => new THREE.MeshStandardMaterial({
+      map: tex(T.eyeBlood()), roughness: .32, metalness: .08
+    }));
+  };
+  /* fur strand material: white base, colored per-instance */
+  M.strand = function () {
+    return cached('strand', () => new THREE.MeshStandardMaterial({
+      color: 0xffffff, roughness: .88, metalness: 0
     }));
   };
   M.eye = function () {
